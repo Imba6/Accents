@@ -32,55 +32,55 @@ hash['y']='ý';
 
 var can_edit = true;
 
-function Accent(event) {
+function AccentDocument(event) {
 	event = event || window.event;
 	var keycode = event.charCode || event.keyCode;
 	if(can_edit && keycode === 113){
-		var header = event.target;
-		var value = header.value;
-		var position = header.selectionStart;
-		var character = value.charAt(position-1);
-		var replace_character = hash[character];
-		if (replace_character) {
-			header.value = header.value.substring(0, position-1) + replace_character + header.value.substring(position);
-			
+		var focused = $(':focus').get(0);
+		if (focused != null) {
+			var position = focused.selectionStart;
+			var character;
+			var replace_character;
+			var outelement;
+			if (position != null) {
+				character = focused.value.charAt(position-1);
+				var replace_character = hash[character];
+				if (replace_character) {
+					focused.value = focused.value.substring(0, position-1) + replace_character + focused.value.substring(position);
+				}
+				focused.selectionStart = position;
+				focused.selectionEnd = position;
+				
+			} else {
+				var range = document.getSelection().getRangeAt(0);
+				position = range.startOffset;
+				if (position == null)
+					return;
+				var start = range.startContainer;
+				character = start.data.charAt(position-1);
+				var replace_character = hash[character];
+				if (replace_character) {
+					start.data = start.data.substring(0, position-1) + replace_character + start.data.substring(position);
+				}
+				range.setStart(start,position);
+				range.setEnd(start,position);
+			}
 		}
-		header.selectionStart = position;
-		header.selectionEnd = position;
 	}
 }
-
-function AddEventListener(elementList) {
-	[].forEach.call(elementList, function(header) {
-		if (!header.hooked) {
-			header.addEventListener("keydown", Accent);
-			header.hooked = true;
-		}
-	});
-}
-
-function DomUpdated() {
-	var elementsList = document.querySelectorAll('input');
-	AddEventListener(elementsList);
-	elementsList = document.querySelectorAll('textarea');
-	AddEventListener(elementsList);
-}
-
-
 
 chrome.runtime.onMessage.addListener( function(request, sender, sendResponse) {
     var data = request.data || {};
 	if (data == "add_listener" && can_edit) {
-		DomUpdated();
-		$("body").bind("DOMSubtreeModified", function() { DomUpdated(); });
+
+	
 	} else if (data == "off") {
 		can_edit = false;
-		$("body").unbind("DOMSubtreeModified");
+		document.removeEventListener("keydown", AccentDocument);
 	} else if (data == "on") {
 		can_edit = true;
-		DomUpdated();
-		$("body").unbind("DOMSubtreeModified");
-		$("body").bind("DOMSubtreeModified", function() { DomUpdated(); });
+		document.removeEventListener("keydown", AccentDocument);
+		document.addEventListener("keydown", AccentDocument);
 	}
     sendResponse({data: data, success: true});
 });
